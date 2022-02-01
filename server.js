@@ -5,16 +5,21 @@ const cors = require("cors");
 const app = express();
 const data = require("./MovieData/data.json");
 const axios = require("axios");
+const pg =require('pg')
 require("dotenv").config();
 
+const client =new pg.Client(process.env.DATABASE_URL)
+
 app.use(cors());
+app.use(express.json())
 const PORT = process.env.PORT;
 
 let url =`https://api.themoviedb.org/3/trending/all/week?api_key=${process.env.APIKEY}`;
-// let trendUrl = process.env.trendUrl;
-// let searchUrl = process.env.searchUrl;
-let query="The Lord of the Rings: The Fellowship of the Ring"
+
+// let query="The Lord of the Rings: The Fellowship of the Ring" changed to be input data from the user instead of fixed
 app.get("/favorite", welcome);
+app.post('/addmovie',addFavorite)
+app.get('/getmovies',getFavMovies)
 // app.get('/movie', serverError)
 app.get("/", getMovies);
 app.use("/spider", notFound);
@@ -22,9 +27,7 @@ app.get('/search',searchMovies)
 app.get('/trending',trendGetter)
 app.get('/popular',popularHandler)
 app.get('/playing',playingMovies)
-// function serverError (req,res){
-//     return res.status(500).json(data.errorData500)
-// }
+
 
 function welcome(req, res) {
   return res.status(200).send("Welcome to Favorite Page ");
@@ -82,7 +85,7 @@ function trendGetter (req,res){
        });
    }
    function searchMovies(req,res){
-     
+       let query = req.query.query
        let urlS=`https://api.themoviedb.org/3/search/movie?api_key=${process.env.APIKEY}&language=en-US&query=${query}`
        axios.get(urlS)
        .then(search=>{
@@ -121,14 +124,42 @@ function trendGetter (req,res){
  })
    }
 
-   function serverError(err, req, res) {
-    const errorr = {
-      status: 500,
-      message: 'error',
-    };
+  function serverError(err, req, res) {
+  const errorr = {
+    status: 500,
+    message: "error",
+   };
     res.status(500).send(errorr);
   }
+  function addFavorite(req,res){
+    console.log(req.body,"hbgugh")
+   const added= req.body
+   let sql = 'INSERT INTO favorMovies(id,title,release_date,poster_path,overview) VALUES ($1,$2,$3,$4,$5) RETURNING *;'
+   let values =[added.id,added.title,added.release_date,added.poster_path,added.overview]
+   client.query(sql,values).then(data=>{
+     res.status(200).json(data.rows)
+   }).catch (err=>{
+     serverError(err,req,res)
+     console.log(err)
+   })
+  }
+  function getFavMovies (req,res){
+    let sql = `SELECT * FROM favorMovies;`
+    client.query(sql)
+    .then(data=>{
+      res.status(200).json (data.rows)
+    }).catch (err=>{
+      serverError(err,req,res)
+    })
 
-app.listen(PORT, () => {
-  console.log(` listening on port ${PORT}`);
-});
+  }
+  // server and clinet are connected 
+client.connect().then(()=>{
+  app.listen(PORT, () => {
+    console.log(` listening on port ${PORT}`);
+  });
+})
+
+// app.listen(PORT, () => {
+//   console.log(` listening on port ${PORT}`);
+// });
