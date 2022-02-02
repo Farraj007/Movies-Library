@@ -27,6 +27,9 @@ app.get('/search',searchMovies)
 app.get('/trending',trendGetter)
 app.get('/popular',popularHandler)
 app.get('/playing',playingMovies)
+app.delete('/DELETE/:id',deleting)
+app.put('/UPDATE/:id',updating)
+app.get('/getMovie/:id',gettingbyid)
 
 
 function welcome(req, res) {
@@ -132,10 +135,10 @@ function trendGetter (req,res){
     res.status(500).send(errorr);
   }
   function addFavorite(req,res){
-    console.log(req.body,"hbgugh")
+    console.log(req.body)
    const added= req.body
-   let sql = 'INSERT INTO favorMovies(id,title,release_date,poster_path,overview) VALUES ($1,$2,$3,$4,$5) RETURNING *;'
-   let values =[added.id,added.title,added.release_date,added.poster_path,added.overview]
+   let sql = 'INSERT INTO favorMovies(title,release_date,poster_path,overview) VALUES ($1,$2,$3,$4) RETURNING *;'
+   let values =[added.title,added.release_date,added.poster_path,added.overview]
    client.query(sql,values).then(data=>{
      res.status(200).json(data.rows)
    }).catch (err=>{
@@ -146,11 +149,46 @@ function trendGetter (req,res){
   function getFavMovies (req,res){
     let sql = `SELECT * FROM favorMovies;`
     client.query(sql)
-    .then(data=>{
-      res.status(200).json (data.rows)
+    .then(select=>{
+      res.status(200).json (select.rows)
     }).catch (err=>{
       serverError(err,req,res)
     })
+
+  }
+  function updating (req,res){
+    const id =req.params.id
+    const movie = req.body
+    let sql = `UPDATE favormovies SET  title=$1,release_date=$2,poster_path=$3,overview=$4 WHERE id=${id} RETURNING *;`
+    let values =[movie.title,movie.release_date,movie.poster_path,movie.overview]
+    client.query(sql,values).then(upp=>{
+      res.status(200).json(upp.rows)
+    }).catch (err=>{
+      serverError(err,req,res)
+    })
+  }
+  function deleting (req,res){
+    const id = req.params.id
+    let sql = `DELETE FROM favorMovies WHERE id=${id};`
+    
+    client.query(sql).then(()=>{
+      res.status(200).send("This Movie Has been deleted");
+      // res.status(204).json({})
+   }) .catch (err=>{
+      serverError(err,req,res)
+   })
+
+  }
+  function gettingbyid (req,res){
+    const id = req.params.id
+    let sql = `SELECT * FROM favorMovies WHERE id=${id};`
+    
+    client.query(sql).then(data=>{
+      res.status(200).json(data.rows);
+      // res.status(204).json({})
+   }) .catch (err=>{
+      serverError(err,req,res)
+   })
 
   }
   // server and clinet are connected 
